@@ -188,7 +188,8 @@ fun AddProductScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
-                onClick = { viewModel.submitProduct(categoriesMap) },
+                onClick = { viewModel.submitProduct(context, categoriesMap)
+                },
                 enabled = name.isNotBlank() && price.isNotBlank() && photoUri != null
             ) {
                 Text("Сохранить")
