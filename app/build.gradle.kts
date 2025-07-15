@@ -73,6 +73,9 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.compose.material3:material3:1.2.1")
 
+    // Эта библиотека официально содержит KeyboardOptions, KeyboardType, ImeAction и др
+    implementation("androidx.compose.ui:ui-text:1.6.1")
+
     // Тесты
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
