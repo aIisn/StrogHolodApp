@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,11 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.strogholodapp.ui.theme.StrogHolodAppTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 val LocalCategory = compositionLocalOf<MutableState<String>> {
     error("No category provided")
@@ -122,7 +127,7 @@ fun MainScreen() {
 fun EquipmentScreen(modifier: Modifier = Modifier) {
     val allProducts = remember { mutableStateListOf<Product>() }
     val selectedCategory = LocalCategory.current
-
+    val coroutineScope = rememberCoroutineScope()
     val categoriesMap = mapOf(
         "Все" to null,
         "Бонеты" to "Bonety",
@@ -137,9 +142,12 @@ fun EquipmentScreen(modifier: Modifier = Modifier) {
         "Стеллажи" to "Stellazhi"
     )
 
+    var productToDelete by remember { mutableStateOf<Product?>(null) }
+
     LaunchedEffect(Unit) {
+        val api = ApiClient.retrofit.create(ApiService::class.java)
         try {
-            val response = ApiClient.retrofit.create(ApiService::class.java).getProducts()
+            val response = withContext(Dispatchers.IO) { api.getProducts() }
             allProducts.clear()
             allProducts.addAll(response)
         } catch (e: Exception) {
@@ -161,17 +169,55 @@ fun EquipmentScreen(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(filteredProducts) { product ->
-            ProductCard(product)
+            ProductCard(
+                product = product,
+                onDeleteRequest = { productToDelete = it },
+                onDeleted = { allProducts.remove(it) }
+            )
         }
+    }
+
+    productToDelete?.let { product ->
+        ConfirmDeleteDialog(
+            product = product,
+            onConfirm = {
+                productToDelete = null
+                coroutineScope.launch {
+                    val api = ApiClient.retrofit.create(ApiService::class.java)
+                    try {
+                        val response = withContext(Dispatchers.IO) {
+                            api.deleteProduct(DeleteRequest(product.id, product.photo))
+                        }
+                        if (response.success) {
+                            allProducts.remove(product)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
+            onDismiss = { productToDelete = null }
+        )
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ProductCard(product: Product) {
+fun ProductCard(
+    product: Product,
+    onDeleteRequest: (Product) -> Unit,
+    onDeleted: (Product) -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(4.dp),
+            .padding(4.dp)
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { showMenu = true }
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -199,26 +245,76 @@ fun ProductCard(product: Product) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(text = product.name, fontSize = 16.sp)
-            Text(text = "Цена: ${product.price}", fontSize = 14.sp)
+            Text(product.name, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Цена: ${product.price}", fontSize = 14.sp)
             product.description?.let {
-                Text(text = it, fontSize = 12.sp, maxLines = 3)
+                Text(it, fontSize = 12.sp, maxLines = 3)
+            }
+
+            Box {
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Удалить") },
+                        onClick = {
+                            showMenu = false
+                            onDeleteRequest(product)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Редактировать") },
+                        onClick = {
+                            showMenu = false
+                            // TODO: Реализовать редактирование
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+fun ConfirmDeleteDialog(
+    product: Product,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Удалить товар?") },
+        text = { Text("Вы уверены, что хотите удалить «${product.name}»?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Удалить") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
+    )
+}
+
+@Composable
 fun CategoryFilterDropdown(selectedCategory: MutableState<String>) {
     val expanded = remember { mutableStateOf(false) }
     val options = listOf(
-        "Все", "Бонеты", "Лари", "Витрины", "Горки встроенный холод", "Горки выносной холод",
-        "Шкафы двухдверные", "Шкафы однодверные", "Кассы", "Кухонное оборудование", "Стеллажи"
+        "Все",
+        "Бонеты",
+        "Лари",
+        "Витрины",
+        "Горки встроенный холод",
+        "Горки выносной холод",
+        "Шкафы двухдверные",
+        "Шкафы однодверные",
+        "Кассы",
+        "Кухонное оборудование",
+        "Стеллажи"
     )
 
     Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
         OutlinedButton(onClick = { expanded.value = true }) {
-            Text(text = selectedCategory.value)
+            Text(text = selectedCategory.value, maxLines = 1)
         }
         DropdownMenu(
             expanded = expanded.value,
