@@ -1,7 +1,6 @@
 package com.example.strogholodapp
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -12,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,20 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.strogholodapp.ui.theme.StrogHolodAppTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import androidx.compose.material.icons.filled.Add
 
-// CompositionLocal для категории
 val LocalCategory = compositionLocalOf<MutableState<String>> {
     error("No category provided")
 }
@@ -47,20 +39,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-data class Product(
-    val id: Int,
-    val name: String,
-    val price: String,
-    val description: String?,
-    val photo: String,
-    val category: String
-)
-
-interface ApiService {
-    @GET("get_products.php")
-    suspend fun getProducts(): List<Product>
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -122,8 +100,7 @@ fun MainScreen() {
                 if (showAddProductScreen) {
                     AddProductScreen(
                         padding = paddingValues,
-                        onSave = { product ->
-                            Log.d("AddProduct", "Создан продукт: $product")
+                        onSave = {
                             showAddProductScreen = false
                         },
                         onCancel = {
@@ -140,7 +117,6 @@ fun MainScreen() {
         }
     }
 }
-
 
 @Composable
 fun EquipmentScreen(modifier: Modifier = Modifier) {
@@ -162,15 +138,8 @@ fun EquipmentScreen(modifier: Modifier = Modifier) {
     )
 
     LaunchedEffect(Unit) {
-        val retrofit = Retrofit.Builder()
-            .baseUrl("https://formanagers.strogholod.ru/api/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        val api = retrofit.create(ApiService::class.java)
-
         try {
-            val response = withContext(Dispatchers.IO) { api.getProducts() }
+            val response = ApiClient.retrofit.create(ApiService::class.java).getProducts()
             allProducts.clear()
             allProducts.addAll(response)
         } catch (e: Exception) {
@@ -230,21 +199,10 @@ fun ProductCard(product: Product) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = product.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Цена: ${product.price}",
-                fontSize = 14.sp
-            )
+            Text(text = product.name, fontSize = 16.sp)
+            Text(text = "Цена: ${product.price}", fontSize = 14.sp)
             product.description?.let {
-                Text(
-                    text = it,
-                    fontSize = 12.sp,
-                    maxLines = 3
-                )
+                Text(text = it, fontSize = 12.sp, maxLines = 3)
             }
         }
     }
@@ -254,22 +212,13 @@ fun ProductCard(product: Product) {
 fun CategoryFilterDropdown(selectedCategory: MutableState<String>) {
     val expanded = remember { mutableStateOf(false) }
     val options = listOf(
-        "Все",
-        "Бонеты",
-        "Лари",
-        "Витрины",
-        "Горки встроенный холод",
-        "Горки выносной холод",
-        "Шкафы двухдверные",
-        "Шкафы однодверные",
-        "Кассы",
-        "Кухонное оборудование",
-        "Стеллажи"
+        "Все", "Бонеты", "Лари", "Витрины", "Горки встроенный холод", "Горки выносной холод",
+        "Шкафы двухдверные", "Шкафы однодверные", "Кассы", "Кухонное оборудование", "Стеллажи"
     )
 
     Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
         OutlinedButton(onClick = { expanded.value = true }) {
-            Text(text = selectedCategory.value, maxLines = 1)
+            Text(text = selectedCategory.value)
         }
         DropdownMenu(
             expanded = expanded.value,

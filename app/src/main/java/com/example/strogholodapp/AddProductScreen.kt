@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.strogholodapp
 
 import android.Manifest
@@ -14,32 +16,33 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.layout.ContentScale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductScreen(
     padding: PaddingValues = PaddingValues(0.dp),
     onSave: (Product) -> Unit,
     onCancel: () -> Unit
 ) {
+    val viewModel: AddProductViewModel = viewModel()
     val context = LocalContext.current
-    var name by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
+
+    val name by viewModel.name.collectAsState()
+    val price by viewModel.price.collectAsState()
+    val description by viewModel.description.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val photoUri by viewModel.photoUri.collectAsState()
+    val responseMessage by viewModel.responseMessage.collectAsState()
+    val success by viewModel.success.collectAsState()
 
     val categoriesMap = mapOf(
         "Бонеты" to "Bonety",
@@ -55,32 +58,44 @@ fun AddProductScreen(
     )
 
     var expanded by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf(categoriesMap.keys.first()) }
+    val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
 
-    // Галерея
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { photoUri = it }
+        uri?.let { viewModel.photoUri.value = it }
     }
 
-    // Камера
-    val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            photoUri = cameraImageUri.value
+            viewModel.photoUri.value = cameraImageUri.value
         }
     }
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
+    ) { granted ->
+        if (granted) {
             val uri = createImageUri(context)
             cameraImageUri.value = uri
             cameraLauncher.launch(uri)
+        }
+    }
+
+    LaunchedEffect(success) {
+        if (success) {
+            onSave(
+                Product(
+                    id = 0,
+                    name = name,
+                    price = price,
+                    description = description,
+                    category = categoriesMap[selectedCategory] ?: "",
+                    photo = photoUri?.toString() ?: ""
+                )
+            )
         }
     }
 
@@ -91,18 +106,18 @@ fun AddProductScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Добавить оборудование", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Добавить оборудование", style = MaterialTheme.typography.titleLarge)
 
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it },
+            onValueChange = { viewModel.name.value = it },
             label = { Text("Название") },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
             value = price,
-            onValueChange = { price = it },
+            onValueChange = { viewModel.price.value = it },
             label = { Text("Цена") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -123,11 +138,11 @@ fun AddProductScreen(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                categoriesMap.keys.forEach { category ->
+                categoriesMap.keys.forEach { label ->
                     DropdownMenuItem(
-                        text = { Text(category) },
+                        text = { Text(label) },
                         onClick = {
-                            selectedCategory = category
+                            viewModel.selectedCategory.value = label
                             expanded = false
                         }
                     )
@@ -137,7 +152,7 @@ fun AddProductScreen(
 
         OutlinedTextField(
             value = description,
-            onValueChange = { description = it },
+            onValueChange = { viewModel.description.value = it },
             label = { Text("Описание") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -147,13 +162,13 @@ fun AddProductScreen(
                 Text("Из галереи")
             }
             Button(onClick = {
-                val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                if (permission == PackageManager.PERMISSION_GRANTED) {
                     val uri = createImageUri(context)
                     cameraImageUri.value = uri
                     cameraLauncher.launch(uri)
                 } else {
-                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
                 }
             }) {
                 Text("С камеры")
@@ -166,28 +181,14 @@ fun AddProductScreen(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
-                    .padding(top = 8.dp),
+                    .aspectRatio(4f / 3f),
                 contentScale = ContentScale.Crop
             )
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
-                onClick = {
-                    val newProduct = Product(
-                        id = 0,
-                        name = name,
-                        price = price,
-                        description = description,
-                        photo = photoUri?.toString() ?: "",
-                        category = categoriesMap[selectedCategory] ?: ""
-                    )
-                    onSave(newProduct)
-                },
+                onClick = { viewModel.submitProduct(categoriesMap) },
                 enabled = name.isNotBlank() && price.isNotBlank() && photoUri != null
             ) {
                 Text("Сохранить")
@@ -196,6 +197,10 @@ fun AddProductScreen(
             OutlinedButton(onClick = onCancel) {
                 Text("Отмена")
             }
+        }
+
+        responseMessage?.let {
+            Text(text = it, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
