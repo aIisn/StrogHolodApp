@@ -3,6 +3,7 @@ package com.example.strogholodapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -29,7 +30,6 @@ import com.example.strogholodapp.ui.theme.StrogHolodAppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.ExperimentalFoundationApi
 
 val LocalCategory = compositionLocalOf<MutableState<String>> {
     error("No category provided")
@@ -52,17 +52,16 @@ fun MainScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
     val selectedCategory = remember { mutableStateOf("Все") }
-
-    val navigationItems = listOf("Актуальные цены", "Калькулятор стеллажа")
-    var selectedItem by remember { mutableStateOf(navigationItems[0]) }
+    var selectedItem by remember { mutableStateOf("Актуальные цены") }
     var showAddProductScreen by remember { mutableStateOf(false) }
+    var editableProduct by remember { mutableStateOf<Product?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
-                navigationItems.forEach { label ->
+                listOf("Актуальные цены", "Калькулятор стеллажа").forEach { label ->
                     NavigationDrawerItem(
                         label = { Text(label) },
                         selected = label == selectedItem,
@@ -93,7 +92,10 @@ fun MainScreen() {
             floatingActionButton = {
                 if (!showAddProductScreen && selectedItem == "Актуальные цены") {
                     FloatingActionButton(
-                        onClick = { showAddProductScreen = true },
+                        onClick = {
+                            editableProduct = null
+                            showAddProductScreen = true
+                        },
                         containerColor = MaterialTheme.colorScheme.primary
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Добавить")
@@ -105,16 +107,25 @@ fun MainScreen() {
                 if (showAddProductScreen) {
                     AddProductScreen(
                         padding = paddingValues,
+                        existingProduct = editableProduct,
                         onSave = {
                             showAddProductScreen = false
+                            editableProduct = null
                         },
                         onCancel = {
                             showAddProductScreen = false
+                            editableProduct = null
                         }
                     )
                 } else {
                     when (selectedItem) {
-                        "Актуальные цены" -> EquipmentScreen(Modifier.padding(paddingValues))
+                        "Актуальные цены" -> EquipmentScreen(
+                            modifier = Modifier.padding(paddingValues),
+                            onEditRequest = {
+                                editableProduct = it
+                                showAddProductScreen = true
+                            }
+                        )
                         "Калькулятор стеллажа" -> PlaceholderScreen("Калькулятор стеллажа", paddingValues)
                     }
                 }
@@ -124,7 +135,10 @@ fun MainScreen() {
 }
 
 @Composable
-fun EquipmentScreen(modifier: Modifier = Modifier) {
+fun EquipmentScreen(
+    modifier: Modifier = Modifier,
+    onEditRequest: (Product) -> Unit
+) {
     val allProducts = remember { mutableStateListOf<Product>() }
     val selectedCategory = LocalCategory.current
     val coroutineScope = rememberCoroutineScope()
@@ -172,7 +186,8 @@ fun EquipmentScreen(modifier: Modifier = Modifier) {
             ProductCard(
                 product = product,
                 onDeleteRequest = { productToDelete = it },
-                onDeleted = { allProducts.remove(it) }
+                onDeleted = { allProducts.remove(it) },
+                onEditRequest = onEditRequest
             )
         }
     }
@@ -206,7 +221,8 @@ fun EquipmentScreen(modifier: Modifier = Modifier) {
 fun ProductCard(
     product: Product,
     onDeleteRequest: (Product) -> Unit,
-    onDeleted: (Product) -> Unit
+    onDeleted: (Product) -> Unit,
+    onEditRequest: (Product) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -251,26 +267,24 @@ fun ProductCard(
                 Text(it, fontSize = 12.sp, maxLines = 3)
             }
 
-            Box {
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Удалить") },
-                        onClick = {
-                            showMenu = false
-                            onDeleteRequest(product)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Редактировать") },
-                        onClick = {
-                            showMenu = false
-                            // TODO: Реализовать редактирование
-                        }
-                    )
-                }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Редактировать") },
+                    onClick = {
+                        showMenu = false
+                        onEditRequest(product)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Удалить") },
+                    onClick = {
+                        showMenu = false
+                        onDeleteRequest(product)
+                    }
+                )
             }
         }
     }

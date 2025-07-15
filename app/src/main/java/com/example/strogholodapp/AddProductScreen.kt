@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 @Composable
 fun AddProductScreen(
     padding: PaddingValues = PaddingValues(0.dp),
+    existingProduct: Product? = null,
     onSave: (Product) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -84,11 +85,15 @@ fun AddProductScreen(
         }
     }
 
+    LaunchedEffect(existingProduct) {
+        existingProduct?.let { viewModel.setProductForEdit(it) }
+    }
+
     LaunchedEffect(success) {
         if (success) {
             onSave(
                 Product(
-                    id = 0,
+                    id = existingProduct?.id ?: 0,
                     name = name,
                     price = price,
                     description = description,
@@ -106,7 +111,10 @@ fun AddProductScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Добавить оборудование", style = MaterialTheme.typography.titleLarge)
+        Text(
+            if (existingProduct != null) "Редактировать оборудование" else "Добавить оборудование",
+            style = MaterialTheme.typography.titleLarge
+        )
 
         OutlinedTextField(
             value = name,
@@ -132,7 +140,9 @@ fun AddProductScreen(
                 readOnly = true,
                 label = { Text("Категория") },
                 trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null) },
-                modifier = Modifier.fillMaxWidth().menuAnchor()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
             )
             ExposedDropdownMenu(
                 expanded = expanded,
@@ -186,19 +196,27 @@ fun AddProductScreen(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Button(
-                onClick = { viewModel.submitProduct(context, categoriesMap)
+                onClick = {
+                    viewModel.submitProduct(context, categoriesMap, existingProduct)
                 },
-                enabled = name.isNotBlank() && price.isNotBlank() && photoUri != null
+                modifier = Modifier.weight(1f)
             ) {
                 Text("Сохранить")
             }
 
-            OutlinedButton(onClick = onCancel) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Отмена")
             }
         }
+
 
         responseMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.primary)

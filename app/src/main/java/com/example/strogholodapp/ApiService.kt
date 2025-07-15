@@ -13,6 +13,9 @@ interface ApiService {
     @POST("delete_product.php")
     suspend fun deleteProduct(@Body request: DeleteRequest): ServerResponse
 
+    @POST("update_product.php")
+    suspend fun updateProduct(@Body product: Product): ServerResponse
+
     @Multipart
     @POST("upload_image.php")
     suspend fun uploadPhoto(
