@@ -92,6 +92,10 @@ class AddProductViewModel : ViewModel() {
         }
     }
 
+    fun resetSuccess() {
+        _success.value = false
+}
+
 
 
     private fun humanCategory(code: String): String {

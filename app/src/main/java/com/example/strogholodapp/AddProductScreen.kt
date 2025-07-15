@@ -11,6 +11,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -101,125 +103,142 @@ fun AddProductScreen(
                     photo = photoUri?.toString() ?: ""
                 )
             )
+            // Сбросить флаг успеха после сохранения
+            viewModel.resetSuccess()
         }
     }
 
-    Column(
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            if (existingProduct != null) "Редактировать оборудование" else "Добавить оборудование",
-            style = MaterialTheme.typography.titleLarge
-        )
+        item {
+            Text(
+                if (existingProduct != null) "Редактировать оборудование" else "Добавить оборудование",
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { viewModel.name.value = it },
-            label = { Text("Название") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = price,
-            onValueChange = { viewModel.price.value = it },
-            label = { Text("Цена") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
+        item {
             OutlinedTextField(
-                value = selectedCategory,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Категория") },
-                trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
+                value = name,
+                onValueChange = { viewModel.name.value = it },
+                label = { Text("Название") },
+                modifier = Modifier.fillMaxWidth()
             )
-            ExposedDropdownMenu(
+        }
+
+        item {
+            OutlinedTextField(
+                value = price,
+                onValueChange = { viewModel.price.value = it },
+                label = { Text("Цена") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            ExposedDropdownMenuBox(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onExpandedChange = { expanded = !expanded }
             ) {
-                categoriesMap.keys.forEach { label ->
-                    DropdownMenuItem(
-                        text = { Text(label) },
-                        onClick = {
-                            viewModel.selectedCategory.value = label
-                            expanded = false
-                        }
-                    )
+                OutlinedTextField(
+                    value = selectedCategory,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Категория") },
+                    trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    categoriesMap.keys.forEach { label ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                viewModel.selectedCategory.value = label
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
         }
 
-        OutlinedTextField(
-            value = description,
-            onValueChange = { viewModel.description.value = it },
-            label = { Text("Описание") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { galleryLauncher.launch("image/*") }) {
-                Text("Из галереи")
-            }
-            Button(onClick = {
-                val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                if (permission == PackageManager.PERMISSION_GRANTED) {
-                    val uri = createImageUri(context)
-                    cameraImageUri.value = uri
-                    cameraLauncher.launch(uri)
-                } else {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
-            }) {
-                Text("С камеры")
-            }
-        }
-
-        photoUri?.let {
-            Image(
-                painter = rememberAsyncImagePainter(model = it),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(4f / 3f),
-                contentScale = ContentScale.Crop
+        item {
+            OutlinedTextField(
+                value = description,
+                onValueChange = { viewModel.description.value = it },
+                label = { Text("Описание") },
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Button(
-                onClick = {
-                    viewModel.submitProduct(context, categoriesMap, existingProduct)
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Сохранить")
-            }
-
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Отмена")
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { galleryLauncher.launch("image/*") }) {
+                    Text("Из галереи")
+                }
+                Button(onClick = {
+                    val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                    if (permission == PackageManager.PERMISSION_GRANTED) {
+                        val uri = createImageUri(context)
+                        cameraImageUri.value = uri
+                        cameraLauncher.launch(uri)
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }) {
+                    Text("С камеры")
+                }
             }
         }
 
+        photoUri?.let { uri ->
+            item {
+                Image(
+                    painter = rememberAsyncImagePainter(model = uri),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(4f / 3f),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
 
-        responseMessage?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.primary)
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = {
+                        viewModel.submitProduct(context, categoriesMap, existingProduct)
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Сохранить")
+                }
+
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Отмена")
+                }
+            }
+        }
+
+        item {
+            responseMessage?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
