@@ -30,6 +30,8 @@ import coil.compose.rememberAsyncImagePainter
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.strogholodapp.categoriesMap
+import com.example.strogholodapp.humanCategory
 
 @Composable
 fun AddProductScreen(
@@ -48,19 +50,6 @@ fun AddProductScreen(
     val photoUri by viewModel.photoUri.collectAsState()
     val responseMessage by viewModel.responseMessage.collectAsState()
     val success by viewModel.success.collectAsState()
-
-    val categoriesMap = mapOf(
-        "Бонеты" to "Bonety",
-        "Лари" to "Lari",
-        "Витрины" to "Vitriny",
-        "Горки встроенный холод" to "Gorki_vstroennyj",
-        "Горки выносной холод" to "Gorki_vynosnoj",
-        "Шкафы двухдверные" to "Shkafy_dvuhdvernye",
-        "Шкафы однодверные" to "Shkafy_odnodvernye",
-        "Кассы" to "Kassy",
-        "Кухонное оборудование" to "Kuhonnoe_oborudovanie",
-        "Стеллажи" to "Stellazhi"
-    )
 
     var expanded by remember { mutableStateOf(false) }
     val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
@@ -89,6 +78,12 @@ fun AddProductScreen(
 
     LaunchedEffect(success) {
         if (success) {
+            val updatedAt = if (existingProduct == null || existingProduct.price != price) {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            } else {
+                existingProduct.priceUpdatedAt
+            }
+
             onSave(
                 Product(
                     id = existingProduct?.id ?: 0,
@@ -96,11 +91,13 @@ fun AddProductScreen(
                     price = price,
                     description = description,
                     category = categoriesMap[selectedCategory] ?: "",
-                    photo = photoUri?.toString() ?: ""
+                    photo = photoUri?.toString() ?: "",
+                    priceUpdatedAt = updatedAt
                 )
             )
         }
     }
+
 
     Column(
         modifier = Modifier

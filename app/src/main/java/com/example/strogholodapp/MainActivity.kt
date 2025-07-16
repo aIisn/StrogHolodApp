@@ -34,6 +34,7 @@ import com.example.strogholodapp.ui.theme.CardBackground
 import com.example.strogholodapp.ui.theme.GradientStart
 import com.example.strogholodapp.ui.theme.GradientEnd
 import androidx.compose.ui.graphics.Brush
+import com.example.strogholodapp.categoriesMap
 
 
 val LocalCategory = compositionLocalOf<MutableState<String>> {
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
-    val selectedCategory = remember { mutableStateOf("Все") }
+    val selectedCategory = remember { mutableStateOf("Изменена цена") } // 🔸 начальное значение
     var selectedItem by remember { mutableStateOf("Актуальные цены") }
     var showAddProductScreen by remember { mutableStateOf(false) }
     var editableProduct by remember { mutableStateOf<Product?>(null) }
@@ -139,6 +140,7 @@ fun MainScreen() {
     }
 }
 
+
 @Composable
 fun EquipmentScreen(
     modifier: Modifier = Modifier,
@@ -147,19 +149,6 @@ fun EquipmentScreen(
     val allProducts = remember { mutableStateListOf<Product>() }
     val selectedCategory = LocalCategory.current
     val coroutineScope = rememberCoroutineScope()
-    val categoriesMap = mapOf(
-        "Все" to null,
-        "Бонеты" to "Bonety",
-        "Лари" to "Lari",
-        "Витрины" to "Vitriny",
-        "Горки встроенный холод" to "Gorki_vstroennyj",
-        "Горки выносной холод" to "Gorki_vynosnoj",
-        "Шкафы двухдверные" to "Shkafy_dvuhdvernye",
-        "Шкафы однодверные" to "Shkafy_odnodvernye",
-        "Кассы" to "Kassy",
-        "Кухонное оборудование" to "Kuhonnoe_oborudovanie",
-        "Стеллажи" to "Stellazhi"
-    )
 
     var productToDelete by remember { mutableStateOf<Product?>(null) }
 
@@ -174,10 +163,14 @@ fun EquipmentScreen(
         }
     }
 
-    val filteredProducts = allProducts.filter {
-        val key = categoriesMap[selectedCategory.value]
-        key == null || it.category == key
+    val key = categoriesMap[selectedCategory.value]
+
+    val filteredProducts = if (selectedCategory.value == "Изменена цена") {
+        allProducts.sortedByDescending { it.priceUpdatedAt }
+    } else {
+        allProducts.filter { key == null || it.category == key }
     }
+
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -322,7 +315,7 @@ fun ConfirmDeleteDialog(
 fun CategoryFilterDropdown(selectedCategory: MutableState<String>) {
     val expanded = remember { mutableStateOf(false) }
     val options = listOf(
-        "Все",
+        "Изменена цена",
         "Бонеты",
         "Лари",
         "Витрины",

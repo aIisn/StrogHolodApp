@@ -67,14 +67,22 @@ class AddProductViewModel : ViewModel() {
                     finalPhotoUrl = uploadResponse.message
                 }
 
+                val priceUpdatedAt = if (existingProduct == null || existingProduct.price != price.value) {
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                } else {
+                    existingProduct.priceUpdatedAt
+                }
+
                 val product = Product(
                     id = editingProductId ?: 0,
                     name = name.value,
                     price = price.value,
                     description = description.value,
                     category = categoryCode,
-                    photo = finalPhotoUrl ?: ""
+                    photo = finalPhotoUrl ?: "",
+                    priceUpdatedAt = priceUpdatedAt
                 )
+
 
                 val response = if (existingProduct != null) {
                     api.updateProduct(product)
