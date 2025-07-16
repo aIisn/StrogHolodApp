@@ -43,6 +43,20 @@ fun AddProductScreen(
     val viewModel: AddProductViewModel = viewModel()
     val context = LocalContext.current
 
+    // Сбрасываем флаг успеха и, если новый продукт, очищаем поля
+    LaunchedEffect(existingProduct) {
+        viewModel.resetSuccess()
+        if (existingProduct != null) {
+            viewModel.setProductForEdit(existingProduct)
+        } else {
+            viewModel.name.value = ""
+            viewModel.price.value = ""
+            viewModel.description.value = ""
+            viewModel.selectedCategory.value = "Бонеты"
+            viewModel.photoUri.value = null
+        }
+    }
+
     val name by viewModel.name.collectAsState()
     val price by viewModel.price.collectAsState()
     val description by viewModel.description.collectAsState()
@@ -60,7 +74,7 @@ fun AddProductScreen(
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
-    ) { success -> if (success) viewModel.photoUri.value = cameraImageUri.value }
+    ) { ok -> if (ok) viewModel.photoUri.value = cameraImageUri.value }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -72,10 +86,7 @@ fun AddProductScreen(
         }
     }
 
-    LaunchedEffect(existingProduct) {
-        existingProduct?.let { viewModel.setProductForEdit(it) }
-    }
-
+    // После успешной отправки один раз вызываем onSave и сразу сбрасываем success
     LaunchedEffect(success) {
         if (success) {
             val updatedAt = if (existingProduct == null || existingProduct.price != price) {
@@ -95,9 +106,9 @@ fun AddProductScreen(
                     priceUpdatedAt = updatedAt
                 )
             )
+            viewModel.resetSuccess()
         }
     }
-
 
     Column(
         modifier = Modifier
@@ -163,7 +174,7 @@ fun AddProductScreen(
                 )
             ) {
                 Icon(Icons.Default.Photo, contentDescription = "Галерея")
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Из галереи")
             }
 
@@ -184,7 +195,7 @@ fun AddProductScreen(
                 )
             ) {
                 Icon(Icons.Default.PhotoCamera, contentDescription = "Камера")
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("С камеры")
             }
         }
@@ -205,16 +216,16 @@ fun AddProductScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Button(
-                onClick = {
-                    viewModel.submitProduct(context, categoriesMap, existingProduct)
-                },
+                onClick = { viewModel.submitProduct(context, categoriesMap, existingProduct) },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Сохранить")
             }
-
             OutlinedButton(
-                onClick = onCancel,
+                onClick = {
+                    viewModel.resetSuccess()
+                    onCancel()
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Отмена")

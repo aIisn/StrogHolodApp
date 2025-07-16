@@ -35,6 +35,9 @@ import com.example.strogholodapp.ui.theme.GradientStart
 import com.example.strogholodapp.ui.theme.GradientEnd
 import androidx.compose.ui.graphics.Brush
 import com.example.strogholodapp.categoriesMap
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 val LocalCategory = compositionLocalOf<MutableState<String>> {
@@ -141,6 +144,7 @@ fun MainScreen() {
 }
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EquipmentScreen(
     modifier: Modifier = Modifier,
@@ -152,6 +156,7 @@ fun EquipmentScreen(
 
     var productToDelete by remember { mutableStateOf<Product?>(null) }
 
+    // Загрузка данных из API
     LaunchedEffect(Unit) {
         val api = ApiClient.retrofit.create(ApiService::class.java)
         try {
@@ -165,13 +170,23 @@ fun EquipmentScreen(
 
     val key = categoriesMap[selectedCategory.value]
 
+    // Парсер дат для API >= 24
+    val dateFormat = remember {
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    }
+
+    // Сортировка или фильтрация
     val filteredProducts = if (selectedCategory.value == "Изменена цена") {
-        allProducts.sortedByDescending { it.priceUpdatedAt }
+        allProducts.sortedByDescending { product ->
+            runCatching {
+                dateFormat.parse(product.priceUpdatedAt)
+            }.getOrNull() ?: Date(0)
+        }
     } else {
         allProducts.filter { key == null || it.category == key }
     }
 
-
+    // Отображаем сетку карточек
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier
@@ -190,6 +205,7 @@ fun EquipmentScreen(
         }
     }
 
+    // Диалог удаления
     productToDelete?.let { product ->
         ConfirmDeleteDialog(
             product = product,
