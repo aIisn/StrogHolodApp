@@ -78,6 +78,10 @@ dependencies {
     // Эта библиотека официально содержит KeyboardOptions, KeyboardType, ImeAction и др
     implementation("androidx.compose.ui:ui-text:1.6.1")
 
+    // Иконки
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
+
+
     // Тесты
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

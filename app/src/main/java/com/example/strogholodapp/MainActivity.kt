@@ -30,6 +30,11 @@ import com.example.strogholodapp.ui.theme.StrogHolodAppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.strogholodapp.ui.theme.CardBackground
+import com.example.strogholodapp.ui.theme.GradientStart
+import com.example.strogholodapp.ui.theme.GradientEnd
+import androidx.compose.ui.graphics.Brush
+
 
 val LocalCategory = compositionLocalOf<MutableState<String>> {
     error("No category provided")
@@ -234,9 +239,9 @@ fun ProductCard(
                 onClick = {},
                 onLongClick = { showMenu = true }
             ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
             modifier = Modifier
@@ -248,7 +253,11 @@ fun ProductCard(
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray),
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(GradientStart, GradientEnd)
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -328,7 +337,11 @@ fun CategoryFilterDropdown(selectedCategory: MutableState<String>) {
 
     Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
         OutlinedButton(onClick = { expanded.value = true }) {
-            Text(text = selectedCategory.value, maxLines = 1)
+            Text(
+                text = selectedCategory.value,
+                maxLines = 1,
+                color = Color.Black // 🔹 всегда чёрный цвет
+            )
         }
         DropdownMenu(
             expanded = expanded.value,
@@ -336,7 +349,7 @@ fun CategoryFilterDropdown(selectedCategory: MutableState<String>) {
         ) {
             options.forEach { label ->
                 DropdownMenuItem(
-                    text = { Text(label) },
+                    text = { Text(label, color = Color.Black) },
                     onClick = {
                         selectedCategory.value = label
                         expanded.value = false
@@ -346,6 +359,7 @@ fun CategoryFilterDropdown(selectedCategory: MutableState<String>) {
         }
     }
 }
+
 
 @Composable
 fun PlaceholderScreen(title: String, padding: PaddingValues) {

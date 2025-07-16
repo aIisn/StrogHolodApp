@@ -97,7 +97,6 @@ class AddProductViewModel : ViewModel() {
 }
 
 
-
     private fun humanCategory(code: String): String {
         return when (code) {
             "Bonety" -> "Бонеты"
