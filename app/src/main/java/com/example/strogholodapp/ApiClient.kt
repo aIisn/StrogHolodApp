@@ -8,7 +8,7 @@ import com.google.gson.GsonBuilder
 object ApiClient {
     val retrofit: Retrofit by lazy {
         val gson = GsonBuilder()
-            // Это позволит GSON автоматически мапить JSON-поля вида price_updated_at → priceUpdatedAt
+            // мапим JSON-поля вида old_price, price_updated_at → oldPrice, priceUpdatedAt
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .create()
 

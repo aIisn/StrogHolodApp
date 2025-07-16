@@ -22,16 +22,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.example.strogholodapp.categoriesMap
+import com.example.strogholodapp.humanCategory
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import com.example.strogholodapp.categoriesMap
-import com.example.strogholodapp.humanCategory
 
 @Composable
 fun AddProductScreen(
@@ -43,7 +45,7 @@ fun AddProductScreen(
     val viewModel: AddProductViewModel = viewModel()
     val context = LocalContext.current
 
-    // Сбрасываем флаг успеха и, если новый продукт, очищаем поля
+    // Сбрасываем флаг успеха и инициализируем поля при каждом открытии экрана
     LaunchedEffect(existingProduct) {
         viewModel.resetSuccess()
         if (existingProduct != null) {
@@ -70,11 +72,15 @@ fun AddProductScreen(
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> uri?.let { viewModel.photoUri.value = it } }
+    ) { uri: Uri? ->
+        uri?.let { viewModel.photoUri.value = it }
+    }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
-    ) { ok -> if (ok) viewModel.photoUri.value = cameraImageUri.value }
+    ) { ok ->
+        if (ok) viewModel.photoUri.value = cameraImageUri.value
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -86,7 +92,7 @@ fun AddProductScreen(
         }
     }
 
-    // После успешной отправки один раз вызываем onSave и сразу сбрасываем success
+    // После успешного сохранения передаём в onSave Product с полем oldPrice
     LaunchedEffect(success) {
         if (success) {
             val updatedAt = if (existingProduct == null || existingProduct.price != price) {
@@ -94,16 +100,18 @@ fun AddProductScreen(
             } else {
                 existingProduct.priceUpdatedAt
             }
+            val oldPriceValue = existingProduct?.price ?: price
 
             onSave(
                 Product(
                     id = existingProduct?.id ?: 0,
                     name = name,
                     price = price,
+                    oldPrice = oldPriceValue,
                     description = description,
-                    category = categoriesMap[selectedCategory] ?: "",
+                    priceUpdatedAt = updatedAt,
                     photo = photoUri?.toString() ?: "",
-                    priceUpdatedAt = updatedAt
+                    category = categoriesMap[selectedCategory] ?: ""
                 )
             )
             viewModel.resetSuccess()
@@ -119,31 +127,25 @@ fun AddProductScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            if (existingProduct != null) "Редактировать оборудование" else "Добавить оборудование",
+            text = if (existingProduct != null) "Редактировать оборудование" else "Добавить оборудование",
             style = MaterialTheme.typography.titleLarge
         )
 
         StyledTextField(value = name, onValueChange = { viewModel.name.value = it }, label = "Название")
         StyledTextField(value = price, onValueChange = { viewModel.price.value = it }, label = "Цена")
 
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
             OutlinedTextField(
                 value = selectedCategory,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Категория") },
-                trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null) },
+                trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .menuAnchor()
             )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 categoriesMap.keys.forEach { label ->
                     DropdownMenuItem(
                         text = { Text(label) },
@@ -156,28 +158,21 @@ fun AddProductScreen(
             }
         }
 
-        StyledTextField(
-            value = description,
-            onValueChange = { viewModel.description.value = it },
-            label = "Описание"
-        )
+        StyledTextField(value = description, onValueChange = { viewModel.description.value = it }, label = "Описание")
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
                 onClick = { galleryLauncher.launch("image/*") },
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
             ) {
-                Icon(Icons.Default.Photo, contentDescription = "Галерея")
+                Icon(Icons.Filled.Photo, contentDescription = "Галерея")
                 Spacer(Modifier.width(8.dp))
                 Text("Из галереи")
             }
-
             OutlinedButton(
                 onClick = {
                     val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
@@ -190,11 +185,9 @@ fun AddProductScreen(
                     }
                 },
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
             ) {
-                Icon(Icons.Default.PhotoCamera, contentDescription = "Камера")
+                Icon(Icons.Filled.PhotoCamera, contentDescription = "Камера")
                 Spacer(Modifier.width(8.dp))
                 Text("С камеры")
             }
@@ -212,8 +205,8 @@ fun AddProductScreen(
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
                 onClick = { viewModel.submitProduct(context, categoriesMap, existingProduct) },
